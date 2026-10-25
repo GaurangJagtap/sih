@@ -1,0 +1,39 @@
+# Environments & dependencies
+venv/
+.venv/
+env/
+ENV/
+node_modules/
+.pnp
+.pnp.js
+
+# Environment variables
+.env
+*.env.local
+
+# Build outputs
+frontend/dist/
+frontend/dist-ssr/
+*.local
+
+# Python cache & artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Database & local storage
+*.db
+*.sqlite3
+backend/aicte_workflow.db
+backend/storage/
+storage/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
