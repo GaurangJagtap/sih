@@ -29,8 +29,9 @@ htmlcov/
 *.db
 *.sqlite3
 backend/aicte_workflow.db
-backend/storage/
-storage/
+/backend/storage/
+/storage/
+!backend/app/storage/
 
 # IDE & OS
 .vscode/
