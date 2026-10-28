@@ -29,6 +29,16 @@ app.include_router(reports.router, prefix=settings.API_V1_STR)
 app.include_router(notifications.router, prefix=settings.API_V1_STR)
 app.include_router(routes.router, prefix=settings.API_V1_STR)
 
+import os
+from app.core.seed_data import seed_all_data
+
+@app.on_event("startup")
+async def startup_event():
+    db_path = "aicte_workflow.db"
+    if not os.path.exists(db_path) or os.path.getsize(db_path) == 0:
+        print("[Startup] Initializing and seeding demo database...")
+        await seed_all_data()
+
 @app.get("/")
 async def root():
     return {
@@ -41,3 +51,4 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
