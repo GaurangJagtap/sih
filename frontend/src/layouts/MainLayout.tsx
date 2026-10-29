@@ -50,64 +50,180 @@ export const MainLayout: React.FC = () => {
   };
   const roleColor = roleColorMap[user?.role ?? ''] || 'bg-slate-100 text-slate-700';
 
-  const navLinks = [
-    {
-      to: isInstitution ? '/institution/dashboard' : '/admin/dashboard',
-      icon: <LayoutDashboard className="w-4 h-4" />,
-      label: isInstitution ? 'My Dashboard' : 'Consolidated Overview',
-      iconColor: 'text-blue-600',
-      bg: 'bg-blue-50',
-    },
-    {
-      to: '/applications',
-      icon: <FileText className="w-4 h-4" />,
-      label: 'Applications & Cases',
-      iconColor: 'text-indigo-600',
-      bg: 'bg-indigo-50',
-    },
-    {
-      to: '/compliance',
-      icon: <ClipboardCheck className="w-4 h-4" />,
-      label: 'Compliance & Undertakings',
-      iconColor: 'text-emerald-600',
-      bg: 'bg-emerald-50',
-    },
-    {
-      to: '/evc',
-      icon: <CalendarCheck className="w-4 h-4" />,
-      label: 'EVC Scheduling & Visits',
-      iconColor: 'text-amber-600',
-      bg: 'bg-amber-50',
-    },
-    {
-      to: '/documents',
-      icon: <Clock className="w-4 h-4" />,
-      label: 'Documents & Leases',
-      iconColor: 'text-purple-600',
-      bg: 'bg-purple-50',
-    },
-  ];
+  const getRoleNav = () => {
+    const role = user?.role;
+    if (role === 'INSTITUTION') {
+      return {
+        primary: [
+          {
+            to: '/institution/dashboard',
+            icon: <LayoutDashboard className="w-4 h-4" />,
+            label: 'College Portal',
+            iconColor: 'text-blue-600',
+            bg: 'bg-blue-50',
+          },
+          {
+            to: '/applications',
+            icon: <FileText className="w-4 h-4" />,
+            label: 'My Applications',
+            iconColor: 'text-indigo-600',
+            bg: 'bg-indigo-50',
+          },
+          {
+            to: '/compliance',
+            icon: <ClipboardCheck className="w-4 h-4" />,
+            label: 'Mandatory Undertakings',
+            iconColor: 'text-emerald-600',
+            bg: 'bg-emerald-50',
+          },
+          {
+            to: '/documents',
+            icon: <Clock className="w-4 h-4" />,
+            label: 'Uploaded Documents & NOCs',
+            iconColor: 'text-purple-600',
+            bg: 'bg-purple-50',
+          },
+        ],
+        innovation: [
+          {
+            to: '/voice-agent',
+            icon: <PhoneCall className="w-4 h-4" />,
+            label: 'AI Principal Support Agent',
+            iconColor: 'text-rose-600',
+            bg: 'bg-rose-50',
+            badge: 'AI',
+            badgeColor: 'bg-rose-500 text-white',
+          },
+        ],
+      };
+    }
 
-  const innovationLinks = [
-    {
-      to: '/voice-agent',
-      icon: <PhoneCall className="w-4 h-4" />,
-      label: 'AI Voice Reminder Agent',
-      iconColor: 'text-rose-600',
-      bg: 'bg-rose-50',
-      badge: 'AI',
-      badgeColor: 'bg-rose-500 text-white',
-    },
-    ...(!isInstitution
-      ? [
+    if (role === 'REGIONAL_OFFICER') {
+      return {
+        primary: [
+          {
+            to: '/admin/dashboard',
+            icon: <LayoutDashboard className="w-4 h-4" />,
+            label: `${user?.region || 'Regional'} Directorate`,
+            iconColor: 'text-emerald-600',
+            bg: 'bg-emerald-50',
+          },
+          {
+            to: '/applications',
+            icon: <FileText className="w-4 h-4" />,
+            label: 'Regional Applications',
+            iconColor: 'text-indigo-600',
+            bg: 'bg-indigo-50',
+          },
+          {
+            to: '/evc',
+            icon: <CalendarCheck className="w-4 h-4" />,
+            label: 'Regional EVC Scheduling',
+            iconColor: 'text-amber-600',
+            bg: 'bg-amber-50',
+          },
+          {
+            to: '/compliance',
+            icon: <ClipboardCheck className="w-4 h-4" />,
+            label: 'College Undertakings',
+            iconColor: 'text-emerald-600',
+            bg: 'bg-emerald-50',
+          },
+          {
+            to: '/documents',
+            icon: <Clock className="w-4 h-4" />,
+            label: 'Land & Lease Verifications',
+            iconColor: 'text-purple-600',
+            bg: 'bg-purple-50',
+          },
+        ],
+        innovation: [
           {
             to: '/escalations',
             icon: <AlertTriangle className="w-4 h-4" />,
-            label: 'Escalations & Overdue',
+            label: 'Regional Escalations',
             iconColor: 'text-red-600',
             bg: 'bg-red-50',
-            badge: undefined,
-            badgeColor: '',
+          },
+          {
+            to: '/voice-agent',
+            icon: <PhoneCall className="w-4 h-4" />,
+            label: 'AI Voice Dispatcher',
+            iconColor: 'text-rose-600',
+            bg: 'bg-rose-50',
+            badge: 'AI',
+            badgeColor: 'bg-rose-500 text-white',
+          },
+        ],
+      };
+    }
+
+    if (role === 'EVC_COMMITTEE') {
+      return {
+        primary: [
+          {
+            to: '/admin/dashboard',
+            icon: <LayoutDashboard className="w-4 h-4" />,
+            label: 'EVC Inspection Terminal',
+            iconColor: 'text-purple-600',
+            bg: 'bg-purple-50',
+          },
+          {
+            to: '/evc',
+            icon: <CalendarCheck className="w-4 h-4" />,
+            label: 'Assigned Campus Visits',
+            iconColor: 'text-amber-600',
+            bg: 'bg-amber-50',
+          },
+          {
+            to: '/applications',
+            icon: <FileText className="w-4 h-4" />,
+            label: 'Inspection Cases',
+            iconColor: 'text-indigo-600',
+            bg: 'bg-indigo-50',
+          },
+          {
+            to: '/documents',
+            icon: <Clock className="w-4 h-4" />,
+            label: 'Site Geotags & NOCs',
+            iconColor: 'text-purple-600',
+            bg: 'bg-purple-50',
+          },
+        ],
+        innovation: [],
+      };
+    }
+
+    if (role === 'BUREAU_OFFICER' || role === 'SENIOR_AUTHORITY') {
+      return {
+        primary: [
+          {
+            to: '/admin/dashboard',
+            icon: <LayoutDashboard className="w-4 h-4" />,
+            label: 'Apex Approval Bureau',
+            iconColor: 'text-amber-600',
+            bg: 'bg-amber-50',
+          },
+          {
+            to: '/applications',
+            icon: <FileText className="w-4 h-4" />,
+            label: 'Final Sanctions Queue',
+            iconColor: 'text-indigo-600',
+            bg: 'bg-indigo-50',
+          },
+          {
+            to: '/compliance',
+            icon: <ClipboardCheck className="w-4 h-4" />,
+            label: 'National Compliance Registry',
+            iconColor: 'text-emerald-600',
+            bg: 'bg-emerald-50',
+          },
+          {
+            to: '/escalations',
+            icon: <AlertTriangle className="w-4 h-4" />,
+            label: 'Appeals & Escalations',
+            iconColor: 'text-red-600',
+            bg: 'bg-red-50',
           },
           {
             to: '/routes-config',
@@ -115,12 +231,90 @@ export const MainLayout: React.FC = () => {
             label: 'Workflow Route Engine',
             iconColor: 'text-slate-600',
             bg: 'bg-slate-50',
-            badge: undefined,
-            badgeColor: '',
           },
-        ]
-      : []),
-  ];
+        ],
+        innovation: [
+          {
+            to: '/voice-agent',
+            icon: <PhoneCall className="w-4 h-4" />,
+            label: 'AI Regulatory Broadcast',
+            iconColor: 'text-rose-600',
+            bg: 'bg-rose-50',
+            badge: 'AI',
+            badgeColor: 'bg-rose-500 text-white',
+          },
+        ],
+      };
+    }
+
+    // Default / ADMIN
+    return {
+      primary: [
+        {
+          to: '/admin/dashboard',
+          icon: <LayoutDashboard className="w-4 h-4" />,
+          label: 'Central Operations HQ',
+          iconColor: 'text-blue-600',
+          bg: 'bg-blue-50',
+        },
+        {
+          to: '/applications',
+          icon: <FileText className="w-4 h-4" />,
+          label: 'Applications & Cases',
+          iconColor: 'text-indigo-600',
+          bg: 'bg-indigo-50',
+        },
+        {
+          to: '/compliance',
+          icon: <ClipboardCheck className="w-4 h-4" />,
+          label: 'Compliance & Undertakings',
+          iconColor: 'text-emerald-600',
+          bg: 'bg-emerald-50',
+        },
+        {
+          to: '/evc',
+          icon: <CalendarCheck className="w-4 h-4" />,
+          label: 'EVC Scheduling & Visits',
+          iconColor: 'text-amber-600',
+          bg: 'bg-amber-50',
+        },
+        {
+          to: '/documents',
+          icon: <Clock className="w-4 h-4" />,
+          label: 'Documents & Leases',
+          iconColor: 'text-purple-600',
+          bg: 'bg-purple-50',
+        },
+      ],
+      innovation: [
+        {
+          to: '/voice-agent',
+          icon: <PhoneCall className="w-4 h-4" />,
+          label: 'AI Voice Reminder Agent',
+          iconColor: 'text-rose-600',
+          bg: 'bg-rose-50',
+          badge: 'AI',
+          badgeColor: 'bg-rose-500 text-white',
+        },
+        {
+          to: '/escalations',
+          icon: <AlertTriangle className="w-4 h-4" />,
+          label: 'Escalations & Overdue',
+          iconColor: 'text-red-600',
+          bg: 'bg-red-50',
+        },
+        {
+          to: '/routes-config',
+          icon: <Layers className="w-4 h-4" />,
+          label: 'Workflow Route Engine',
+          iconColor: 'text-slate-600',
+          bg: 'bg-slate-50',
+        },
+      ],
+    };
+  };
+
+  const { primary: navLinks, innovation: innovationLinks } = getRoleNav();
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
