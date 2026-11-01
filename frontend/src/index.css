@@ -651,6 +651,86 @@
 .filter-pill.active { background: var(--blue-light); border-color: var(--blue-secondary); color: var(--blue-primary); font-weight: 600; }
 
 /* ═══════════════════════════
+   LAYOUT UTILITIES
+   ═══════════════════════════ */
+.app-sidebar {
+  width: 250px;
+  min-width: 250px;
+  max-width: 250px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  height: 100vh;
+  z-index: 40;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 2px 0 12px rgba(23, 43, 77, 0.15);
+  display: flex;
+  flex-direction: column;
+}
+
+.app-main-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  margin-left: 250px;
+  min-width: 0;
+}
+
+@media (max-width: 768px) {
+  .app-sidebar {
+    display: none;
+  }
+  .app-main-wrapper {
+    margin-left: 0;
+  }
+}
+
+.dashboard-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 14px;
+}
+
+@media (max-width: 1400px) {
+  .dashboard-kpi-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 500px) {
+  .dashboard-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dashboard-row-2-1 {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+}
+
+.dashboard-row-1-1 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 1024px) {
+  .dashboard-row-2-1,
+  .dashboard-row-1-1 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ═══════════════════════════
    REDUCED MOTION
    ═══════════════════════════ */
 @media (prefers-reduced-motion: reduce) {
@@ -659,3 +739,4 @@
     transition-duration: 0.001ms !important;
   }
 }
+

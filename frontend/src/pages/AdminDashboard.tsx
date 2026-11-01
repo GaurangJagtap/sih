@@ -348,8 +348,7 @@ export const AdminDashboard: React.FC = () => {
       </div>
 
       {/* ── KPI Cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 13 }}
-        className="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="dashboard-kpi-grid">
         <KpiCard
           label="Total Applications"
           value={kpis.total_applications ?? applications.length}
@@ -414,7 +413,7 @@ export const AdminDashboard: React.FC = () => {
       </div>
 
       {/* ── Row 1: Area Chart + Donut ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
+      <div className="dashboard-row-2-1">
         <ChartCard
           title="Application Workflow Trends"
           desc="Movement of applications across the approval lifecycle over time."
@@ -493,7 +492,7 @@ export const AdminDashboard: React.FC = () => {
       </div>
 
       {/* ── Row 2: Stage Distribution + Regional Performance ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <div className="dashboard-row-1-1">
         <ChartCard
           title="Application Stage Distribution"
           desc="Current distribution of cases across all workflow stages."
@@ -554,7 +553,7 @@ export const AdminDashboard: React.FC = () => {
       </div>
 
       {/* ── Row 3: Ageing + Processing Efficiency ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <div className="dashboard-row-1-1">
         <ChartCard
           title="Pendency Ageing Analysis"
           desc="Applications grouped by duration of pending status. Older cases require priority attention."

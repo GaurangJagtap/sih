@@ -541,20 +541,7 @@ export const MainLayout: React.FC = () => {
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-app)' }}>
 
       {/* ── Desktop Sidebar (fixed) ── */}
-      <aside
-        className="hidden md:flex flex-col"
-        style={{
-          width: 245,
-          minWidth: 245,
-          maxWidth: 245,
-          position: 'fixed',
-          top: 0, left: 0,
-          height: '100vh',
-          zIndex: 40,
-          borderRight: '1px solid rgba(255,255,255,0.06)',
-          boxShadow: '2px 0 12px rgba(23,43,77,0.15)',
-        }}
-      >
+      <aside className="app-sidebar">
         <Sidebar navGroups={navGroups} user={user} unreadCount={unreadCount} />
       </aside>
 
@@ -565,7 +552,7 @@ export const MainLayout: React.FC = () => {
             style={{ position: 'fixed', inset: 0, background: 'rgba(23,43,77,0.50)', backdropFilter: 'blur(2px)' }}
             onClick={() => setMobileSidebar(false)}
           />
-          <aside style={{ position: 'relative', width: 260, height: '100%', boxShadow: 'var(--shadow-xl)' }}>
+          <aside style={{ position: 'relative', width: 250, height: '100%', boxShadow: 'var(--shadow-xl)' }}>
             <button
               onClick={() => setMobileSidebar(false)}
               style={{
@@ -587,9 +574,7 @@ export const MainLayout: React.FC = () => {
       )}
 
       {/* ── Main content area ── */}
-      <div style={{ flex: 1, marginLeft: 0, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}
-        className="md:ml-[245px]"
-      >
+      <div className="app-main-wrapper">
 
         {/* ── Top Header ── */}
         <header className="app-header">
