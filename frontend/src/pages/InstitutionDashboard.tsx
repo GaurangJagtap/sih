@@ -4,275 +4,488 @@ import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import {
   Building2, FileText, CheckCircle2, Clock, AlertTriangle,
-  ArrowUpRight, PhoneCall, ShieldCheck, TrendingUp, ChevronRight,
-  CalendarDays, Zap, Activity
+  ArrowUpRight, PhoneCall, ShieldCheck, ChevronRight,
+  CalendarDays, Activity, ChevronDown
 } from 'lucide-react';
 import {
-  RadialBarChart, RadialBar, ResponsiveContainer, Tooltip,
-  PieChart, Pie, Cell
+  ResponsiveContainer, PieChart, Pie, Cell, Tooltip
 } from 'recharts';
 import type { ApplicationItem, UndertakingItem, DocumentItem } from '../types';
 
-const statusConfig: Record<string, { label: string; badge: string }> = {
-  SUBMITTED: { label: 'Submitted', badge: 'badge badge-blue' },
-  SCRUTINY_IN_PROGRESS: { label: 'Under Scrutiny', badge: 'badge badge-indigo' },
-  DEFICIENCY_COMMUNICATED: { label: 'Deficiency Returned', badge: 'badge badge-amber' },
-  DEFICIENCY_RETURNED: { label: 'Deficiency Returned', badge: 'badge badge-amber' },
-  EVC_SCHEDULED: { label: 'EVC Scheduled', badge: 'badge badge-purple' },
-  EVC_COMPLETED: { label: 'EVC Completed', badge: 'badge badge-green' },
-  BUREAU_REVIEW: { label: 'Bureau Review', badge: 'badge badge-indigo' },
-  APPROVED: { label: 'Approved', badge: 'badge badge-green' },
-  REJECTED: { label: 'Rejected', badge: 'badge badge-red' },
+/* ─── Status maps ─── */
+const STATUS_MAP: Record<string, { label: string; cls: string }> = {
+  UNDER_SCRUTINY:         { label: 'Under Scrutiny',    cls: 'badge-blue' },
+  DEFICIENCY_RETURNED:    { label: 'Deficiency Issued', cls: 'badge-amber' },
+  AWAITING_EVC:           { label: 'Awaiting EVC',      cls: 'badge-blue' },
+  AWAITING_DECISION:      { label: 'Awaiting Decision', cls: 'badge-amber' },
+  CONDITIONALLY_APPROVED: { label: 'Cond. Approved',    cls: 'badge-navy' },
+  APPROVED:               { label: 'Approved',          cls: 'badge-green' },
+  REJECTED:               { label: 'Rejected',          cls: 'badge-red' },
 };
 
-const validityConfig: Record<string, { badge: string; dot: string }> = {
-  VALID: { badge: 'badge badge-green', dot: 'bg-emerald-500' },
-  EXPIRING_90: { badge: 'badge badge-blue', dot: 'bg-blue-500' },
-  EXPIRING_60: { badge: 'badge badge-amber', dot: 'bg-amber-500' },
-  EXPIRING_30: { badge: 'badge badge-red', dot: 'bg-red-500' },
-  EXPIRED: { badge: 'badge badge-red', dot: 'bg-red-700' },
+const VALIDITY_MAP: Record<string, { label: string; cls: string; color: string }> = {
+  VALID:               { label: 'Valid',              cls: 'badge-green',  color: '#268568' },
+  EXPIRING_SOON_90:    { label: 'Expiring (90d)',     cls: 'badge-navy',   color: '#397BB7' },
+  EXPIRING_SOON_60:    { label: 'Expiring (60d)',     cls: 'badge-amber',  color: '#D99A32' },
+  EXPIRING_SOON_30:    { label: 'Expiring (30d)',     cls: 'badge-red',    color: '#C64C4C' },
+  EXPIRED:             { label: 'Expired',            cls: 'badge-red',    color: '#C64C4C' },
 };
 
-const undertakingConfig: Record<string, string> = {
-  PENDING: 'badge badge-amber',
-  SUBMITTED: 'badge badge-blue',
-  VERIFIED: 'badge badge-green',
-  REJECTED: 'badge badge-red',
+const UT_MAP: Record<string, string> = {
+  PENDING:               'badge-amber',
+  NOT_SUBMITTED:         'badge-amber',
+  SUBMITTED:             'badge-blue',
+  VERIFIED:              'badge-green',
+  RETURNED_FOR_CORRECTION: 'badge-red',
+  OVERDUE:               'badge-red',
 };
 
-const WorkflowStep: React.FC<{
-  step: number;
-  label: string;
-  active: boolean;
-  done: boolean;
-}> = ({ step, label, active, done }) => (
-  <div className="flex flex-col items-center gap-1.5 flex-1">
-    <div
-      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all
-        ${done ? 'bg-emerald-500 text-white' : active ? 'bg-blue-600 text-white ring-4 ring-blue-100' : 'bg-slate-100 text-slate-400'}`}
-    >
-      {done ? '✓' : step}
+/* ─── Workflow stepper ─── */
+const WORKFLOW_STEPS = [
+  { key: 'INTAKE',              label: 'Submitted' },
+  { key: 'SCRUTINY',            label: 'Scrutiny' },
+  { key: 'EVC',                 label: 'EVC Visit' },
+  { key: 'DECISION',            label: 'Decision' },
+  { key: 'CLOSED',              label: 'Closed' },
+];
+
+function getStepIndex(stage: string): number {
+  const m: Record<string, number> = {
+    INTAKE: 0, SCRUTINY: 1, DEFICIENCY_REVIEW: 1,
+    EVC: 2, DECISION: 3, AWAITING_COMPLIANCE: 4, CLOSED: 4,
+  };
+  return m[stage] ?? 0;
+}
+
+const WorkflowStepper: React.FC<{ stage: string; status: string }> = ({ stage, status }) => {
+  const active = getStepIndex(stage);
+  const isDone = ['APPROVED', 'REJECTED', 'CLOSED'].includes(status);
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', padding: '6px 0' }}>
+      {WORKFLOW_STEPS.map((step, i) => (
+        <React.Fragment key={step.key}>
+          {/* Step circle */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, zIndex: 1 }}>
+            <div style={{
+              width: 30, height: 30,
+              borderRadius: '50%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 11.5, fontWeight: 700,
+              background: i < active || (isDone && i <= active)
+                ? 'var(--green)'
+                : i === active
+                  ? 'var(--blue-primary)'
+                  : 'var(--border)',
+              color: i <= active ? '#fff' : 'var(--text-muted)',
+              transition: 'all 250ms',
+              border: i === active && !isDone ? '3px solid var(--blue-light)' : '3px solid transparent',
+              boxSizing: 'border-box',
+            }}>
+              {i < active || isDone ? '✓' : i + 1}
+            </div>
+            <span style={{
+              fontSize: 10,
+              fontWeight: i === active ? 700 : 500,
+              color: i === active ? 'var(--blue-primary)' : i < active ? 'var(--green)' : 'var(--text-muted)',
+              whiteSpace: 'nowrap',
+            }}>
+              {step.label}
+            </span>
+          </div>
+          {/* Connector */}
+          {i < WORKFLOW_STEPS.length - 1 && (
+            <div style={{
+              flex: 1,
+              height: 2,
+              margin: '-18px 2px 0',
+              background: i < active ? 'var(--green)' : 'var(--border)',
+              transition: 'background 250ms',
+            }} />
+          )}
+        </React.Fragment>
+      ))}
     </div>
-    <span className={`text-[10px] text-center leading-tight font-medium ${active ? 'text-blue-700' : done ? 'text-emerald-700' : 'text-slate-400'}`}>
-      {label}
-    </span>
-  </div>
-);
+  );
+};
 
+/* ─── Custom tooltip ─── */
+const DarkTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{
+      background: '#172B4D', border: '1px solid rgba(255,255,255,0.1)',
+      borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#fff',
+    }}>
+      {payload.map((p: any, i: number) => (
+        <div key={i} style={{ marginBottom: i < payload.length - 1 ? 3 : 0 }}>
+          <span style={{ color: p.fill }}>{p.name}: </span>
+          <strong>{p.value}</strong>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+/* ═══════════════════════════════════
+   INSTITUTION DASHBOARD
+   ═══════════════════════════════════ */
 export const InstitutionDashboard: React.FC = () => {
   const { user } = useAuth();
-  const [apps, setApps] = useState<ApplicationItem[]>([]);
+  const [apps, setApps]               = useState<ApplicationItem[]>([]);
   const [undertakings, setUndertakings] = useState<UndertakingItem[]>([]);
-  const [documents, setDocuments] = useState<DocumentItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [documents, setDocuments]     = useState<DocumentItem[]>([]);
+  const [loading, setLoading]         = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
+    (async () => {
       try {
-        const [appsRes, utRes, docsRes] = await Promise.all([
+        const [a, u, d] = await Promise.all([
           api.get('/applications'),
           api.get('/compliance'),
           api.get('/documents'),
         ]);
-        setApps(appsRes.data);
-        setUndertakings(utRes.data);
-        setDocuments(docsRes.data);
-      } catch (err) {
-        console.error('Failed to load institution data', err);
+        setApps(a.data || []);
+        setUndertakings(u.data || []);
+        setDocuments(d.data || []);
+      } catch (e) {
+        console.error(e);
       } finally {
         setLoading(false);
       }
-    };
-    fetchData();
+    })();
   }, []);
 
   if (loading) {
     return (
-      <div className="space-y-4 animate-pulse">
-        <div className="h-28 bg-white rounded-2xl border border-slate-200" />
-        <div className="grid grid-cols-3 gap-4">
-          {[1,2,3].map(i => <div key={i} className="h-28 bg-white rounded-2xl border border-slate-200" />)}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="skeleton skeleton-card" style={{ height: 80 }} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 13 }}>
+          {[...Array(4)].map((_, i) => <div key={i} className="skeleton skeleton-card" style={{ height: 100 }} />)}
         </div>
-        <div className="h-64 bg-white rounded-2xl border border-slate-200" />
+        <div className="skeleton skeleton-card" style={{ height: 180 }} />
       </div>
     );
   }
 
-  const primaryApp = apps[0];
-  const pendingUndertakings = undertakings.filter(u => u.status !== 'VERIFIED');
-  const expiringDocs = documents.filter(d => d.validity_status.includes('EXPIRING') || d.validity_status === 'EXPIRED');
-  const verifiedUndertakings = undertakings.filter(u => u.status === 'VERIFIED');
-
-  const workflowStages = ['SUBMITTED', 'SCRUTINY_IN_PROGRESS', 'EVC_SCHEDULED', 'BUREAU_REVIEW', 'APPROVED'];
-  const currentStageIndex = primaryApp ? workflowStages.indexOf(primaryApp.status) : -1;
-
-  const complianceRate = undertakings.length > 0
-    ? Math.round((verifiedUndertakings.length / undertakings.length) * 100)
+  /* ── Derived metrics ── */
+  const activeApp   = apps.find(a => !['APPROVED','REJECTED','CLOSED'].includes(a.status)) || apps[0];
+  const compScore   = undertakings.length > 0
+    ? Math.round((undertakings.filter(u => u.status === 'VERIFIED').length / undertakings.length) * 100)
     : 0;
+  const overdueUt   = undertakings.filter(u => u.status === 'OVERDUE' || u.status === 'NOT_SUBMITTED');
+  const expDocs     = documents.filter(d => ['EXPIRING_SOON_30','EXPIRED'].includes(d.validity_status));
+  const pendingUt   = undertakings.filter(u => ['PENDING','NOT_SUBMITTED'].includes(u.status));
 
-  const donutData = [
-    { name: 'Verified', value: verifiedUndertakings.length, fill: '#10b981' },
-    { name: 'Pending', value: pendingUndertakings.length, fill: '#f59e0b' },
-  ];
+  const compDonut = [
+    { name: 'Verified',  value: undertakings.filter(u => u.status === 'VERIFIED').length,  fill: '#268568' },
+    { name: 'Submitted', value: undertakings.filter(u => u.status === 'SUBMITTED').length, fill: '#397BB7' },
+    { name: 'Pending',   value: pendingUt.length, fill: '#D99A32' },
+    { name: 'Overdue',   value: overdueUt.length, fill: '#C64C4C' },
+  ].filter(d => d.value > 0);
 
   return (
-    <div className="space-y-5 animate-fade-in">
-      {/* Institution Hero Banner */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-5 text-white shadow-lg shadow-blue-500/20 relative overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute -top-8 -right-8 w-40 h-40 bg-white/5 rounded-full" />
-          <div className="absolute bottom-2 right-20 w-20 h-20 bg-white/5 rounded-full" />
-        </div>
-        <div className="relative flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Building2 className="w-4 h-4 text-blue-200" />
-              <span className="text-blue-200 text-xs font-semibold">
-                AICTE ID: {primaryApp?.permanent_id || 'AICTE-1-000109'}
-              </span>
-              <span className="text-blue-300 text-xs">· Western Region</span>
-            </div>
-            <h1 className="text-xl font-extrabold text-white">
-              {primaryApp?.institution_name || 'Sunrise Institute of Technology'}
-            </h1>
-            <p className="text-blue-200 text-xs mt-1">
-              Authorized Signatory: Dr. Rajesh Sharma &nbsp;|&nbsp; +91 98220 11223
-            </p>
-          </div>
-          <Link
-            to="/applications"
-            className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 bg-white text-blue-700 rounded-xl text-sm font-bold hover:bg-blue-50 transition-colors shadow-sm"
-          >
-            <FileText className="w-4 h-4" />
-            View Applications
-            <ArrowUpRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-        {/* Workflow Progress Bar */}
-        {primaryApp && (
-          <div className="relative mt-5 pt-4 border-t border-white/20">
-            <div className="text-[10px] text-blue-200 font-semibold uppercase tracking-widest mb-3">
-              Application Workflow Progress
-            </div>
-            <div className="flex items-start justify-between gap-1 relative">
-              <div className="absolute top-4 left-4 right-4 h-0.5 bg-white/20">
-                <div
-                  className="h-full bg-white/60 transition-all duration-700"
-                  style={{ width: `${currentStageIndex >= 0 ? (currentStageIndex / (workflowStages.length - 1)) * 100 : 0}%` }}
-                />
+      {/* ── Welcome Banner ── */}
+      <div
+        className="animate-in"
+        style={{
+          background: 'linear-gradient(135deg, #172B4D 0%, #244B73 60%, #2864A5 100%)',
+          borderRadius: 14,
+          padding: '22px 26px',
+          color: '#fff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 16,
+        }}
+      >
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <Building2 size={18} style={{ opacity: 0.7 }} />
+            <span style={{ fontSize: 11.5, fontWeight: 600, opacity: 0.65, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+              Institution Portal
+            </span>
+          </div>
+          <h1 style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.2, marginBottom: 5 }}>
+            Welcome, {user?.full_name}
+          </h1>
+          <p style={{ fontSize: 12, opacity: 0.65, lineHeight: 1.5, maxWidth: 500 }}>
+            AICTE Approval & Compliance Portal · Academic Year 2026-27 · Regulatory Operations
+          </p>
+        </div>
+        <div style={{ flexShrink: 0, textAlign: 'right' }}>
+          <div style={{ fontSize: 11, opacity: 0.55, marginBottom: 3 }}>Compliance Score</div>
+          <div style={{ fontSize: 36, fontWeight: 800, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums' }}>
+            {compScore}<span style={{ fontSize: 20 }}>%</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── KPI Cards ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 13 }}>
+        {[
+          {
+            label: 'Active Applications',
+            value: apps.filter(a => !['APPROVED','REJECTED','CLOSED'].includes(a.status)).length,
+            icon: <FileText size={17} />,
+            iconBg: 'var(--blue-light)', iconColor: 'var(--blue-primary)',
+            sub: 'Currently in workflow',
+            delay: '0.04s',
+            to: '/applications',
+          },
+          {
+            label: 'Pending Undertakings',
+            value: pendingUt.length,
+            icon: <Clock size={17} />,
+            iconBg: 'var(--amber-light)', iconColor: 'var(--amber)',
+            sub: 'Awaiting submission',
+            delay: '0.08s',
+            to: '/compliance',
+          },
+          {
+            label: 'Overdue Obligations',
+            value: overdueUt.length,
+            icon: <AlertTriangle size={17} />,
+            iconBg: 'var(--red-light)', iconColor: 'var(--red)',
+            sub: 'Past due date',
+            delay: '0.12s',
+            to: '/compliance',
+          },
+          {
+            label: 'Documents Expiring',
+            value: expDocs.length,
+            icon: <CalendarDays size={17} />,
+            iconBg: expDocs.length > 0 ? 'var(--red-light)' : 'var(--green-light)',
+            iconColor: expDocs.length > 0 ? 'var(--red)' : 'var(--green)',
+            sub: 'Within 30 days',
+            delay: '0.16s',
+            to: '/documents',
+          },
+        ].map(k => (
+          <Link key={k.label} to={k.to} style={{ textDecoration: 'none' }}>
+            <div className="kpi-card animate-in" style={{ animationDelay: k.delay }}>
+              <div style={{ marginBottom: 10 }}>
+                <div className="kpi-icon-box" style={{ background: k.iconBg }}>
+                  <span style={{ color: k.iconColor }}>{k.icon}</span>
+                </div>
               </div>
-              {workflowStages.map((stage, i) => (
-                <WorkflowStep
-                  key={stage}
-                  step={i + 1}
-                  label={stage.replace(/_/g, ' ')}
-                  active={i === currentStageIndex}
-                  done={i < currentStageIndex}
-                />
-              ))}
+              <div className="kpi-value tabular">{k.value}</div>
+              <div className="kpi-label" style={{ marginTop: 4 }}>{k.label}</div>
+              <div className="kpi-sub">{k.sub}</div>
             </div>
-          </div>
-        )}
+          </Link>
+        ))}
       </div>
 
-      {/* KPI Cards Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="stat-card blue">
-          <div className="flex items-start justify-between">
+      {/* ── Active Application Status ── */}
+      {activeApp && (
+        <div className="surface-card animate-in-d1">
+          <div className="section-header">
             <div>
-              <p className="text-xs font-semibold text-slate-500">Active Applications</p>
-              <div className="text-3xl font-extrabold text-slate-900 mt-1">{apps.length}</div>
+              <div className="section-title">Application Status</div>
+              <div className="section-desc">Live position of your active AICTE application in the regulatory workflow</div>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center">
-              <FileText className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="mt-3 pt-3 border-t border-slate-100 text-[11px] text-blue-600 font-medium flex items-center gap-1">
-            <Activity className="w-3 h-3" />
-            EoA &amp; Intake Approval 2026-27
-          </div>
-        </div>
-
-        <div className="stat-card amber">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-semibold text-slate-500">Pending Undertakings</p>
-              <div className="text-3xl font-extrabold text-amber-600 mt-1">{pendingUndertakings.length}</div>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center">
-              <Clock className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="mt-3 pt-3 border-t border-slate-100 text-[11px] text-slate-500 flex items-center gap-1">
-            Evidence submission required
-          </div>
-        </div>
-
-        <div className="stat-card red">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-semibold text-slate-500">Documents Expiring</p>
-              <div className="text-3xl font-extrabold text-red-600 mt-1">{expiringDocs.length}</div>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center">
-              <AlertTriangle className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="mt-3 pt-3 border-t border-slate-100 text-[11px] text-red-500 font-medium flex items-center gap-1">
-            Advance renewal alert active
-          </div>
-        </div>
-      </div>
-
-      {/* Main content grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Applications Table - 2 cols */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center">
-            <div>
-              <h2 className="section-title">Your Approval Applications</h2>
-              <p className="section-subtitle">{apps.length} total records</p>
-            </div>
-            <Link to="/applications" className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1">
-              View All <ChevronRight className="w-3.5 h-3.5" />
+            <Link to={`/applications/${activeApp.id}`} className="btn btn-ghost btn-sm flex items-center gap-1">
+              Full Detail <ChevronRight size={13} />
             </Link>
           </div>
-          <div className="overflow-x-auto">
+          <div style={{ padding: '20px 24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 3 }}>
+                  Application Number
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--blue-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                  {activeApp.application_number}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 3 }}>
+                  {activeApp.application_type} · {activeApp.route_code} · AY {activeApp.academic_year}
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Current Status</div>
+                <span className={`badge ${STATUS_MAP[activeApp.status]?.cls ?? 'badge-gray'}`}>
+                  {STATUS_MAP[activeApp.status]?.label ?? activeApp.status?.replace(/_/g, ' ')}
+                </span>
+                {activeApp.is_overdue && (
+                  <div style={{ marginTop: 6 }}>
+                    <span className="badge badge-red">
+                      <AlertTriangle size={10} /> Stage Overdue
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Stepper */}
+            <WorkflowStepper stage={activeApp.current_stage} status={activeApp.status} />
+
+            {/* Deadline */}
+            {activeApp.stage_deadline && (
+              <div style={{ marginTop: 16, padding: '10px 14px', background: 'var(--bg-surface-2)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                <div className="flex items-center gap-2">
+                  <Clock size={13} color="var(--text-muted)" />
+                  <span style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>
+                    Stage deadline: <strong style={{ color: activeApp.is_overdue ? 'var(--red)' : 'var(--text-primary)' }}>
+                      {new Date(activeApp.stage_deadline).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </strong>
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Row: Compliance Donut + Undertakings List ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16 }}>
+        {/* Compliance Donut */}
+        <div className="chart-card animate-in-d2">
+          <div className="chart-title">Compliance Health</div>
+          <div className="chart-desc">Undertaking obligations by status</div>
+          <div style={{ marginTop: 16 }}>
+            {undertakings.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-icon"><ShieldCheck size={20} color="var(--text-muted)" /></div>
+                <div className="empty-title">No undertakings</div>
+              </div>
+            ) : (
+              <>
+                <ResponsiveContainer width="100%" height={170}>
+                  <PieChart>
+                    <Pie
+                      data={compDonut}
+                      cx="50%" cy="50%"
+                      innerRadius={52} outerRadius={75}
+                      paddingAngle={2}
+                      dataKey="value"
+                      animationBegin={300}
+                      animationDuration={700}
+                    >
+                      {compDonut.map((d, i) => <Cell key={i} fill={d.fill} />)}
+                    </Pie>
+                    <Tooltip content={<DarkTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                  {compDonut.map(d => (
+                    <div key={d.name} className="flex items-center justify-between" style={{ fontSize: 11.5 }}>
+                      <div className="flex items-center gap-2">
+                        <span style={{ width: 8, height: 8, borderRadius: 2, background: d.fill, display: 'inline-block', flexShrink: 0 }} />
+                        <span style={{ color: 'var(--text-secondary)' }}>{d.name}</span>
+                      </div>
+                      <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{d.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Pending undertakings table */}
+        <div className="surface-card animate-in-d2">
+          <div className="section-header">
+            <div>
+              <div className="section-title">Mandatory Undertakings</div>
+              <div className="section-desc">Compliance obligations requiring your attention</div>
+            </div>
+            <Link to="/compliance" className="btn btn-ghost btn-sm flex items-center gap-1">
+              All Undertakings <ChevronRight size={13} />
+            </Link>
+          </div>
+          {undertakings.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-icon"><CheckCircle2 size={20} color="var(--text-muted)" /></div>
+              <div className="empty-title">No undertakings found</div>
+              <div className="empty-desc">No compliance obligations assigned.</div>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Requirement</th>
+                    <th>Due Date</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {undertakings.slice(0, 7).map(u => (
+                    <tr key={u.id}>
+                      <td>
+                        <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--text-primary)' }}>{u.condition_title}</div>
+                        <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>{u.undertaking_code}</div>
+                      </td>
+                      <td style={{ fontSize: 11.5, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                        {new Date(u.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' })}
+                      </td>
+                      <td>
+                        <span className={`badge ${UT_MAP[u.status] ?? 'badge-gray'}`}>
+                          {u.status?.replace(/_/g, ' ')}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Document validity snapshot ── */}
+      <div className="surface-card animate-in-d3">
+        <div className="section-header">
+          <div>
+            <div className="section-title">Document Validity Status</div>
+            <div className="section-desc">Institutional documents, lease deeds and regulatory NOCs</div>
+          </div>
+          <Link to="/documents" className="btn btn-ghost btn-sm flex items-center gap-1">
+            All Documents <ChevronRight size={13} />
+          </Link>
+        </div>
+        {documents.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-icon"><FileText size={20} color="var(--text-muted)" /></div>
+            <div className="empty-title">No documents on record</div>
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Application No.</th>
-                  <th>Type</th>
-                  <th>Status</th>
-                  <th>Deadline</th>
-                  <th className="text-right">Action</th>
+                  <th>Document</th>
+                  <th>Issue Date</th>
+                  <th>Expiry Date</th>
+                  <th>Validity</th>
+                  <th>Verification</th>
                 </tr>
               </thead>
               <tbody>
-                {apps.map((app) => {
-                  const sc = statusConfig[app.status] || { label: app.status, badge: 'badge badge-gray' };
+                {documents.slice(0, 5).map(doc => {
+                  const v = VALIDITY_MAP[doc.validity_status] ?? { label: doc.validity_status, cls: 'badge-gray', color: '#697586' };
                   return (
-                    <tr key={app.id}>
+                    <tr key={doc.id}>
                       <td>
-                        <span className="font-mono text-xs font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
-                          {app.application_number}
+                        <div style={{ fontSize: 12.5, fontWeight: 500 }}>{doc.display_name}</div>
+                        <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>{doc.document_type}</div>
+                      </td>
+                      <td style={{ fontSize: 11.5, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                        {doc.issue_date ? new Date(doc.issue_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                      </td>
+                      <td style={{ fontSize: 11.5, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                        {doc.expiry_date ? new Date(doc.expiry_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                      </td>
+                      <td>
+                        <span className={`badge ${v.cls}`}>{v.label}</span>
+                      </td>
+                      <td>
+                        <span className={`badge ${doc.verification_status === 'VERIFIED' ? 'badge-green' : 'badge-gray'}`}>
+                          {doc.verification_status?.replace(/_/g, ' ')}
                         </span>
-                      </td>
-                      <td className="text-slate-600 text-xs">{app.application_type}</td>
-                      <td><span className={sc.badge}>{sc.label}</span></td>
-                      <td className="text-xs text-slate-500">
-                        {app.stage_deadline
-                          ? new Date(app.stage_deadline).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
-                          : <span className="text-slate-300">—</span>}
-                      </td>
-                      <td className="text-right">
-                        <Link
-                          to={`/applications/${app.id}`}
-                          className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-800"
-                        >
-                          View <ArrowUpRight className="w-3 h-3" />
-                        </Link>
                       </td>
                     </tr>
                   );
@@ -280,132 +493,43 @@ export const InstitutionDashboard: React.FC = () => {
               </tbody>
             </table>
           </div>
-        </div>
-
-        {/* Compliance Donut + Rate */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-          <h2 className="section-title mb-1">Compliance Summary</h2>
-          <p className="section-subtitle mb-4">Undertaking fulfillment rate</p>
-
-          <div className="h-36 relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={donutData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={42}
-                  outerRadius={62}
-                  paddingAngle={3}
-                  dataKey="value"
-                >
-                  {donutData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(v, n) => [v, n]} contentStyle={{ fontSize: '12px', borderRadius: '8px' }} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="absolute inset-0 flex items-center justify-center flex-col">
-              <div className="text-2xl font-extrabold text-slate-900">{complianceRate}%</div>
-              <div className="text-[10px] text-slate-400 font-medium">Fulfilled</div>
-            </div>
-          </div>
-
-          <div className="space-y-2 mt-3">
-            <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500" /><span className="text-slate-600">Verified</span></div>
-              <span className="font-bold text-slate-800">{verifiedUndertakings.length}</span>
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-amber-500" /><span className="text-slate-600">Pending</span></div>
-              <span className="font-bold text-slate-800">{pendingUndertakings.length}</span>
-            </div>
-            <div className="progress-bar mt-3">
-              <div
-                className="progress-fill bg-gradient-to-r from-emerald-500 to-teal-400"
-                style={{ width: `${complianceRate}%` }}
-              />
-            </div>
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* Undertakings + Documents */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Undertakings */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center">
-            <div>
-              <h2 className="section-title">Time-Bound Undertakings</h2>
-              <p className="section-subtitle">Conditional compliance items</p>
-            </div>
-            <Link to="/compliance" className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1">
-              View All <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-          <div className="divide-y divide-slate-50">
-            {undertakings.slice(0, 4).map((u) => (
-              <div key={u.id} className="px-5 py-3.5 hover:bg-slate-50 transition-colors">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-semibold text-slate-800 truncate">{u.condition_title}</div>
-                    <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed line-clamp-1">{u.condition_description}</p>
-                  </div>
-                  <span className={undertakingConfig[u.status] || 'badge badge-gray'}>{u.status}</span>
-                </div>
-                <div className="mt-2 flex items-center justify-between">
-                  <div className="flex items-center gap-1 text-[11px] text-slate-400">
-                    <CalendarDays className="w-3 h-3" />
-                    Due: {new Date(u.due_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                  </div>
-                  <Link to="/compliance" className="text-[11px] font-semibold text-blue-600 hover:underline">
-                    Upload Proof →
-                  </Link>
-                </div>
+      {/* ── Quick actions ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }} className="animate-in-d4">
+        {[
+          { label: 'New Application', sub: 'Start EoA or new programme approval', to: '/applications', icon: <Plus size={16} />, color: '#2864A5' },
+          { label: 'AI Support Agent', sub: 'Automated compliance assistance', to: '/voice-agent', icon: <PhoneCall size={16} />, color: '#C64C4C', badge: 'AI' },
+          { label: 'My Applications', sub: 'Track active workflow cases', to: '/applications', icon: <FileText size={16} />, color: '#268568' },
+        ].map(q => (
+          <Link key={q.label} to={q.to} style={{ textDecoration: 'none' }}>
+            <div className="kpi-card flex items-center gap-3" style={{ padding: '13px 16px' }}>
+              <div className="kpi-icon-box" style={{ background: q.color + '18', width: 34, height: 34 }}>
+                <span style={{ color: q.color }}>{q.icon}</span>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Documents */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center">
-            <div>
-              <h2 className="section-title">Documents &amp; Leases</h2>
-              <p className="section-subtitle">Prescribed validity monitoring</p>
-            </div>
-            <Link to="/documents" className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1">
-              View All <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-          <div className="divide-y divide-slate-50">
-            {documents.slice(0, 4).map((d) => {
-              const vc = validityConfig[d.validity_status] || { badge: 'badge badge-gray', dot: 'bg-slate-400' };
-              return (
-                <div key={d.id} className="px-5 py-3.5 hover:bg-slate-50 transition-colors">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${vc.dot}`} />
-                      <div className="text-xs font-semibold text-slate-800 truncate">{d.display_name}</div>
-                    </div>
-                    <span className={vc.badge}>{d.validity_status.replace(/_/g, ' ')}</span>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between">
-                    <div className="flex items-center gap-1 text-[11px] text-slate-400">
-                      <CalendarDays className="w-3 h-3" />
-                      Expiry: {d.expiry_date ? new Date(d.expiry_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'No Expiry'}
-                    </div>
-                    <Link to="/documents" className="text-[11px] font-semibold text-purple-600 hover:underline">
-                      Renew →
-                    </Link>
-                  </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)' }} className="flex items-center gap-1.5">
+                  {q.label}
+                  {q.badge && (
+                    <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 99, background: '#C64C4C', color: '#fff' }}>
+                      {q.badge}
+                    </span>
+                  )}
                 </div>
-              );
-            })}
-          </div>
-        </div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{q.sub}</div>
+              </div>
+              <ChevronRight size={13} color="var(--text-muted)" />
+            </div>
+          </Link>
+        ))}
       </div>
+
     </div>
   );
 };
+
+/* ── local Plus icon (not imported above) ── */
+function Plus({ size }: { size: number }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>;
+}

@@ -89,79 +89,79 @@ export const DocumentsList: React.FC = () => {
   };
 
   return (
-    <div className="space-y-5">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Header */}
-      <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+      <div className="animate-in" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Prescribed Documents & Lease Validity Tracking</h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Automated advance expiry alerts (90, 60, and 30 days), renewal verification, and audit chain.
-          </p>
+          <h1 className="page-title">Document Validity & Renewal</h1>
+          <p className="page-desc">Prescribed documents, lease deeds, and NOC validity tracking with automated advance expiry alerts.</p>
         </div>
-
         {user?.role === 'INSTITUTION' && (
           <button
             type="button"
             onClick={() => setShowUploadModal(true)}
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-lg shadow-sm flex items-center gap-1.5 transition-colors"
+            className="btn btn-primary btn-md flex items-center gap-2"
+            style={{ flexShrink: 0 }}
           >
-            <Upload className="w-4 h-4" /> Upload Prescribed Document
+            <Upload size={15} /> Upload Document
           </button>
         )}
       </div>
 
-      {/* Expiry Alerts Summary Bar */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-        <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-red-600 text-white flex items-center justify-center font-bold">
-            30d
+      {/* Expiry Alert Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 13 }} className="animate-in-d1">
+        <div className="kpi-card" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px' }}>
+          <div className="kpi-icon-box" style={{ background: 'var(--red-light)', width: 36, height: 36 }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--red)' }}>30d</span>
           </div>
           <div>
-            <div className="font-bold text-red-900">Critical Expiry (≤ 30 Days)</div>
-            <div className="text-[11px] text-red-700">Immediate renewal submission required</div>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--red)' }}>Critical Expiry (&le;30 Days)</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Immediate renewal required</div>
           </div>
         </div>
-
-        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-amber-600 text-white flex items-center justify-center font-bold">
-            60d
+        <div className="kpi-card" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px' }}>
+          <div className="kpi-icon-box" style={{ background: 'var(--amber-light)', width: 36, height: 36 }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--amber)' }}>60d</span>
           </div>
           <div>
-            <div className="font-bold text-amber-900">Upcoming Expiry (≤ 60 Days)</div>
-            <div className="text-[11px] text-amber-700">Advance institution notification triggered</div>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--amber)' }}>Upcoming Expiry (&le;60 Days)</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Advance notification triggered</div>
           </div>
         </div>
-
-        <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold">
-            90d
+        <div className="kpi-card" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px' }}>
+          <div className="kpi-icon-box" style={{ background: 'var(--blue-light)', width: 36, height: 36 }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--blue-primary)' }}>90d</span>
           </div>
           <div>
-            <div className="font-bold text-blue-900">Early Expiry Alert (≤ 90 Days)</div>
-            <div className="text-[11px] text-blue-700">Scheduled for automated compliance checks</div>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--blue-primary)' }}>Early Alert (&le;90 Days)</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Scheduled for compliance check</div>
           </div>
         </div>
       </div>
 
       {/* Documents Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="surface-card animate-in-d2" style={{ overflow: 'hidden' }}>
         {loading ? (
-          <div className="p-8 text-center text-xs text-slate-500">Loading document registry...</div>
+          <div style={{ padding: 24 }}>
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="skeleton skeleton-text" style={{ height: 38, marginBottom: 10 }} />
+            ))}
+          </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-xs">
-              <thead className="bg-slate-50 text-slate-600 font-semibold text-left">
+          <div style={{ overflowX: 'auto' }}>
+            <table className="data-table">
+              <thead>
                 <tr>
-                  <th className="py-3 px-4">Document Title & Type</th>
-                  <th className="py-3 px-4">Institution</th>
-                  <th className="py-3 px-4">Expiry Date</th>
-                  <th className="py-3 px-4">Validity Status</th>
-                  <th className="py-3 px-4">Verification</th>
-                  <th className="py-3 px-4">Historical Chain</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
+                  <th>Document Title</th>
+                  <th>Institution</th>
+                  <th>Issue Date</th>
+                  <th>Expiry Date</th>
+                  <th>Validity</th>
+                  <th>Verification</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700">
+              <tbody>
                 {documents.map((doc) => (
                   <tr key={doc.id} className="hover:bg-slate-50 transition-colors">
                     <td className="py-3 px-4 max-w-xs">

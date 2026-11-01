@@ -105,99 +105,83 @@ export const ComplianceList: React.FC = () => {
   const isInstitution = user?.role === 'INSTITUTION';
 
   return (
-    <div className="space-y-5">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Header */}
-      <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+      <div className="animate-in" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Time-Bound Undertakings & Compliance</h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Institutional conditions, evidence verification, extension review, and statutory closure.
-          </p>
+          <h1 className="page-title">Institutional Undertakings</h1>
+          <p className="page-desc">Time-bound compliance obligations, evidence verification, extension review, and statutory closure.</p>
         </div>
       </div>
 
       {/* Compliance Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="surface-card animate-in-d1" style={{ overflow: 'hidden' }}>
         {loading ? (
-          <div className="p-8 text-center text-xs text-slate-500">Loading compliance register...</div>
+          <div style={{ padding: 24 }}>
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="skeleton skeleton-text" style={{ height: 38, marginBottom: 10 }} />
+            ))}
+          </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-xs">
-              <thead className="bg-slate-50 text-slate-600 font-semibold text-left">
+          <div style={{ overflowX: 'auto' }}>
+            <table className="data-table">
+              <thead>
                 <tr>
-                  <th className="py-3 px-4">Undertaking ID</th>
-                  <th className="py-3 px-4">Condition & Requirement</th>
-                  <th className="py-3 px-4">Institution</th>
-                  <th className="py-3 px-4">Due Date</th>
-                  <th className="py-3 px-4">Evidence Status</th>
-                  <th className="py-3 px-4">Remarks</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
+                  <th>Undertaking ID</th>
+                  <th>Condition & Requirement</th>
+                  <th>Institution</th>
+                  <th>Due Date</th>
+                  <th>Status</th>
+                  <th>Remarks</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700">
+              <tbody>
                 {items.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-3 px-4 font-mono font-bold text-slate-800">
-                      {item.undertaking_code}
+                  <tr key={item.id}>
+                    <td><span className="app-id">{item.undertaking_code}</span></td>
+                    <td style={{ maxWidth: 220 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--text-primary)' }}>{item.condition_title}</div>
+                      <div style={{ fontSize: 10.5, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.condition_description}</div>
                     </td>
-                    <td className="py-3 px-4 max-w-xs">
-                      <div className="font-semibold text-slate-900">{item.condition_title}</div>
-                      <div className="text-[11px] text-slate-500 truncate">{item.condition_description}</div>
+                    <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{item.institution_name}</td>
+                    <td style={{ fontSize: 11.5, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                      {new Date(item.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' })}
                     </td>
-                    <td className="py-3 px-4 font-medium">{item.institution_name}</td>
-                    <td className="py-3 px-4 text-slate-600">
-                      {new Date(item.due_date).toLocaleDateString()}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          item.status === 'VERIFIED'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : item.status === 'SUBMITTED'
-                            ? 'bg-blue-100 text-blue-800'
-                            : item.status === 'RETURNED_FOR_CORRECTION'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-amber-100 text-amber-800'
-                        }`}
-                      >
-                        {item.status}
-                      </span>
-                      {item.evidence_filename && (
-                        <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
-                          📎 {item.evidence_filename}
-                        </div>
-                      )}
+                    <td>
+                      <span className={`badge ${
+                            item.status === 'VERIFIED' ? 'badge-green'
+                            : item.status === 'SUBMITTED' ? 'badge-blue'
+                            : item.status === 'RETURNED_FOR_CORRECTION' ? 'badge-red'
+                            : item.status === 'OVERDUE' ? 'badge-red'
+                            : 'badge-amber'
+                          }`}>
+                          {item.status?.replace(/_/g, ' ')}
+                        </span>
+                        {item.evidence_filename && (
+                          <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 3, fontFamily: 'monospace' }}>
+                            📎 {item.evidence_filename}
+                          </div>
+                        )}
                     </td>
                     <td className="py-3 px-4 text-[11px] text-slate-500 max-w-xs truncate">
                       {item.verification_remarks || '—'}
                     </td>
-                    <td className="py-3 px-4 text-right space-x-2">
-                      {isInstitution && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => setUploadItem(item)}
-                            className="px-2.5 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded font-semibold text-[11px]"
-                          >
-                            Upload Proof
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setExtItem(item)}
-                            className="px-2.5 py-1 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded font-semibold text-[11px]"
-                          >
-                            Ask Extension
-                          </button>
-                        </>
-                      )}
-
-                      {isOfficer && item.status === 'SUBMITTED' && (
-                        <button
-                          type="button"
-                          onClick={() => setSelectedItem(item)}
-                          className="px-2.5 py-1 bg-emerald-600 text-white hover:bg-emerald-700 rounded font-semibold text-[11px]"
-                        >
-                          Verify Evidence
+                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                        {isInstitution && (
+                          <>
+                            <button type="button" onClick={() => setUploadItem(item)} className="btn btn-ghost btn-sm">
+                              Upload Proof
+                            </button>
+                            <button type="button" onClick={() => setExtItem(item)} className="btn btn-secondary btn-sm">
+                              Request Extension
+                            </button>
+                          </>
+                        )}
+                        {isOfficer && item.status === 'SUBMITTED' && (
+                          <button type="button" onClick={() => setSelectedItem(item)} className="btn btn-primary btn-sm">
+                            Verify Evidence
                         </button>
                       )}
                     </td>

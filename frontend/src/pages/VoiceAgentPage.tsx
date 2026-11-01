@@ -80,38 +80,60 @@ export const VoiceAgentPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Feature Innovation Header */}
-      <div className="bg-gradient-to-r from-slate-900 via-rose-950 to-slate-900 text-white p-6 rounded-2xl shadow-lg border border-rose-900/40 flex flex-col md:flex-row justify-between md:items-center gap-4">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Innovation Banner */}
+      <div
+        className="animate-in"
+        style={{
+          background: 'linear-gradient(135deg, #172B4D 0%, #1D3559 50%, #244B73 100%)',
+          borderRadius: 14,
+          padding: '20px 26px',
+          color: '#fff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 16,
+          border: '1px solid rgba(71,127,184,0.30)',
+        }}
+      >
         <div>
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 uppercase tracking-wider flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-rose-400" /> SIH26262 Standout Innovation
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <span style={{
+              fontSize: 10, fontWeight: 700,
+              padding: '3px 10px', borderRadius: 99,
+              background: 'rgba(198,76,76,0.25)',
+              border: '1px solid rgba(198,76,76,0.40)',
+              color: '#F4A0A0',
+              letterSpacing: '0.06em', textTransform: 'uppercase',
+              display: 'flex', alignItems: 'center', gap: 5,
+            }}>
+              <Sparkles size={10} /> SIH26262 Innovation
             </span>
-            <span className="text-xs text-slate-400">
-              Provider Mode: <b>SIMULATED AGENT</b>
-            </span>
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>Mode: SIMULATED AGENT</span>
           </div>
-          <h1 className="text-xl font-bold tracking-tight text-white mt-2">
-            AI Multilingual Voice Call Reminder Agent
+          <h1 style={{ fontSize: 18, fontWeight: 700, color: '#FFFFFF', marginBottom: 6 }}>
+            AI Multilingual Voice Compliance Reminder Agent
           </h1>
-          <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
+          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', lineHeight: 1.6, maxWidth: 560 }}>
             When institutions fail to respond to SMS/email alerts, this autonomous AI voice agent calls registered
-            representatives in English, Hindi, or Marathi, parses 9 regulatory intents, generates case-linked summaries,
+            representatives in English, Hindi, or Marathi, parses regulatory intents, generates case-linked summaries,
             and schedules follow-up tasks without bypassing statutory officer verification.
           </p>
         </div>
-
         <button
           type="button"
-          onClick={() => {
-            setShowInitiateModal(true);
-            setActiveCallSession(null);
-            setCallResult(null);
+          onClick={() => { setShowInitiateModal(true); setActiveCallSession(null); setCallResult(null); }}
+          style={{
+            background: 'var(--red)', color: '#fff',
+            border: 'none', borderRadius: 10,
+            padding: '9px 18px', fontSize: 12.5, fontWeight: 700,
+            cursor: 'pointer', flexShrink: 0,
+            display: 'flex', alignItems: 'center', gap: 7,
+            boxShadow: '0 4px 12px rgba(198,76,76,0.35)',
+            transition: 'all 150ms',
           }}
-          className="px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-xl text-xs shadow-lg shadow-rose-600/30 flex items-center gap-2 flex-shrink-0 transition-colors"
         >
-          <PhoneCall className="w-4 h-4" /> Trigger Automated Call
+          <PhoneCall size={15} /> Trigger Automated Call
         </button>
       </div>
 

@@ -75,82 +75,75 @@ export const EVCList: React.FC = () => {
   const isOfficer = user?.role === 'REGIONAL_OFFICER' || user?.role === 'EVC_COMMITTEE' || user?.role === 'ADMIN';
 
   return (
-    <div className="space-y-5">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Header */}
-      <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+      <div className="animate-in" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Expert Visit Committee (EVC) Operations</h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Physical campus inspection scheduling, committee constitution, deadline monitoring, and inspection reports.
-          </p>
+          <h1 className="page-title">EVC Scheduling & Operations</h1>
+          <p className="page-desc">Expert Visit Committee campus inspection scheduling, panel constitution, and inspection reporting.</p>
         </div>
-
         {isOfficer && (
           <button
             type="button"
             onClick={() => setShowScheduleModal(true)}
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-lg shadow-sm flex items-center gap-1.5 transition-colors"
+            className="btn btn-primary btn-md flex items-center gap-2"
+            style={{ flexShrink: 0 }}
           >
-            <Plus className="w-4 h-4" /> Schedule New EVC Inspection
+            <Plus size={15} /> Schedule EVC Inspection
           </button>
         )}
       </div>
 
       {/* EVC Register Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="surface-card animate-in-d1" style={{ overflow: 'hidden' }}>
         {loading ? (
-          <div className="p-8 text-center text-xs text-slate-500">Loading EVC schedule...</div>
+          <div style={{ padding: 24 }}>
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="skeleton skeleton-text" style={{ height: 38, marginBottom: 10 }} />
+            ))}
+          </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-xs">
-              <thead className="bg-slate-50 text-slate-600 font-semibold text-left">
+          <div style={{ overflowX: 'auto' }}>
+            <table className="data-table">
+              <thead>
                 <tr>
-                  <th className="py-3 px-4">Application ID</th>
-                  <th className="py-3 px-4">Institution & Region</th>
-                  <th className="py-3 px-4">Inspection Date</th>
-                  <th className="py-3 px-4">EVC Panel</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4">Findings & Recommendation</th>
-                  <th className="py-3 px-4 text-right">Action</th>
+                  <th>Application ID</th>
+                  <th>Institution & Region</th>
+                  <th>Inspection Date</th>
+                  <th>EVC Panel</th>
+                  <th>Status</th>
+                  <th>Findings</th>
+                  <th style={{ textAlign: 'right' }}>Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700">
+              <tbody>
                 {records.map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-3 px-4 font-mono font-bold text-blue-700">
-                      {r.application_number}
+                  <tr key={r.id}>
+                    <td><span className="app-id">{r.application_number}</span></td>
+                    <td>
+                      <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--text-primary)' }}>{r.institution_name}</div>
+                      <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>Region: {r.region}</div>
                     </td>
-                    <td className="py-3 px-4">
-                      <div className="font-semibold text-slate-900">{r.institution_name}</div>
-                      <div className="text-[10px] text-slate-500">Region: {r.region}</div>
-                    </td>
-                    <td className="py-3 px-4">
+                    <td style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                       {r.scheduled_date ? (
-                        <div className="font-medium text-slate-800">
-                          {new Date(r.scheduled_date).toLocaleDateString()}
-                        </div>
+                        new Date(r.scheduled_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
                       ) : (
-                        <span className="text-slate-400">Not scheduled</span>
+                        <span style={{ color: 'var(--text-muted)' }}>Not scheduled</span>
                       )}
                     </td>
-                    <td className="py-3 px-4">
+                    <td>
                       {r.committee_members?.map((m: any, idx: number) => (
-                        <div key={idx} className="text-[11px] text-slate-600">
-                          • {m.name || m.designation}
-                        </div>
-                      )) || 'Panel assigned'}
+                        <div key={idx} style={{ fontSize: 11, color: 'var(--text-secondary)' }}>• {m.name || m.designation}</div>
+                      )) || <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>Panel assigned</span>}
                     </td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          r.status === 'COMPLETED'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : r.is_overdue
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-purple-100 text-purple-800'
-                        }`}
-                      >
-                        {r.status} {r.is_overdue && '(OVERDUE)'}
+                    <td>
+                      <span className={`badge ${
+                          r.status === 'COMPLETED' ? 'badge-green'
+                          : r.is_overdue ? 'badge-red'
+                          : r.status === 'SCHEDULED' ? 'badge-blue'
+                          : 'badge-amber'
+                        }`}>
+                        {r.status?.replace(/_/g, ' ')} {r.is_overdue && '· Overdue'}
                       </span>
                     </td>
                     <td className="py-3 px-4 max-w-xs text-[11px]">

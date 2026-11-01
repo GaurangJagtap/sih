@@ -61,14 +61,22 @@ export const ApplicationDetail: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="bg-white border border-slate-200 rounded-xl p-8 text-center text-xs text-slate-500">
-        Loading case details and workflow timeline...
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div className="skeleton skeleton-card" style={{ height: 80 }} />
+        <div className="skeleton skeleton-card" style={{ height: 160 }} />
+        <div className="skeleton skeleton-card" style={{ height: 260 }} />
       </div>
     );
   }
 
   if (!app) {
-    return <div className="text-center p-8 text-xs text-slate-500">Application not found</div>;
+    return (
+      <div className="empty-state surface-card" style={{ padding: '60px 20px' }}>
+        <div className="empty-icon"><FileText size={22} color="var(--text-muted)" /></div>
+        <div className="empty-title">Application not found</div>
+        <div className="empty-desc">The requested application record does not exist or you do not have access.</div>
+      </div>
+    );
   }
 
   const isRO = user?.role === 'REGIONAL_OFFICER' || user?.role === 'ADMIN';
@@ -76,51 +84,58 @@ export const ApplicationDetail: React.FC = () => {
   const isInstitution = user?.role === 'INSTITUTION';
 
   return (
-    <div className="space-y-6">
-      {/* Back button and case header */}
-      <div className="flex items-center gap-2">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Back button */}
+      <div className="animate-in">
         <button
           type="button"
           onClick={() => navigate('/applications')}
-          className="p-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-100 text-xs flex items-center gap-1 font-medium"
+          className="btn btn-ghost btn-sm flex items-center gap-1.5"
         >
-          <ArrowLeft className="w-3.5 h-3.5" /> Back to Register
+          <ArrowLeft size={13} /> Back to Applications
         </button>
       </div>
 
-      <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between md:items-center gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded border border-blue-200">
-              {app.application_number}
-            </span>
-            <span className="text-xs text-slate-500">
-              Configured Route: <b>{app.workflow_route?.name}</b> (v{app.workflow_route?.version})
-            </span>
+      {/* Case header */}
+      <div className="surface-card animate-in-d1" style={{ padding: '18px 22px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <span className="app-id" style={{ fontSize: 13 }}>{app.application_number}</span>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                {app.workflow_route?.name} · v{app.workflow_route?.version}
+              </span>
+              {app.is_overdue && (
+                <span className="badge badge-red"><AlertTriangle size={10} /> Overdue</span>
+              )}
+            </div>
+            <h1 style={{ fontSize: 18, fontWeight: 700, color: 'var(--navy-text)', marginBottom: 5 }}>
+              {app.institution?.name}
+            </h1>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+              Region: <strong>{app.region}</strong> &nbsp;·&nbsp; {app.application_type} &nbsp;·&nbsp; AY {app.academic_year}
+            </p>
           </div>
-          <h1 className="text-xl font-bold text-slate-900 mt-1">{app.institution?.name}</h1>
-          <p className="text-xs text-slate-500">
-            Region: {app.region} | Application Type: {app.application_type} | Academic Year: {app.academic_year}
-          </p>
-        </div>
-
-        <div className="text-right">
-          <div className="text-xs font-semibold text-slate-500">Current Stage & Status</div>
-          <div className="flex items-center gap-2 mt-1 justify-end">
-            <span className="px-2.5 py-1 bg-slate-100 text-slate-800 font-bold text-xs rounded border border-slate-200">
-              {app.current_stage}
-            </span>
-            <span
-              className={`px-2.5 py-1 text-xs font-bold rounded ${
-                app.status === 'APPROVED'
-                  ? 'bg-emerald-100 text-emerald-800'
-                  : app.status === 'DEFICIENCY_RETURNED'
-                  ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                  : 'bg-blue-100 text-blue-800'
-              }`}
-            >
-              {app.status}
-            </span>
+          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+            <div style={{ fontSize: 10.5, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Current Stage & Status</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+              <span className="badge badge-navy" style={{ fontSize: 11 }}>
+                {app.current_stage?.replace(/_/g, ' ')}
+              </span>
+              <span className={`badge ${
+                app.status === 'APPROVED' ? 'badge-green'
+                : app.status === 'REJECTED' ? 'badge-red'
+                : app.status === 'DEFICIENCY_RETURNED' ? 'badge-amber'
+                : 'badge-blue'
+              }`}>
+                {app.status?.replace(/_/g, ' ')}
+              </span>
+            </div>
+            {app.stage_deadline && (
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>
+                Deadline: {new Date(app.stage_deadline).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </div>
+            )}
           </div>
         </div>
       </div>
