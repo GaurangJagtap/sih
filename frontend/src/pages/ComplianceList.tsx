@@ -182,8 +182,9 @@ export const ComplianceList: React.FC = () => {
                         {isOfficer && item.status === 'SUBMITTED' && (
                           <button type="button" onClick={() => setSelectedItem(item)} className="btn btn-primary btn-sm">
                             Verify Evidence
-                        </button>
-                      )}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
