@@ -189,7 +189,7 @@ export const Login: React.FC = () => {
           </div>
         </div>
 
-        {/* Bottom SIH tag */}
+        {/* Bottom Platform tag */}
         <div style={{ position: 'relative' }}>
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
@@ -199,11 +199,11 @@ export const Login: React.FC = () => {
             marginBottom: 8,
           }}>
             <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.65)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-              Smart India Hackathon 2026 · SIH26262
+              Statutory Regulatory Operations Platform
             </span>
           </div>
           <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.35)' }}>
-            Problem Statement: AICTE Approval Workflow Automation & Compliance Monitoring
+            All India Council for Technical Education · Ministry of Education, Govt. of India
           </div>
         </div>
       </div>
@@ -228,7 +228,7 @@ export const Login: React.FC = () => {
               <ShieldCheck size={24} color="#fff" />
             </div>
             <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--navy-text)' }}>AICTE Approval Portal</h2>
-            <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 3 }}>Regulatory Workflow Automation · SIH26262</p>
+            <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 3 }}>Regulatory Workflow Automation &amp; Compliance Portal</p>
           </div>
 
           {/* Login card */}

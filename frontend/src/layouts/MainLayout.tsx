@@ -605,7 +605,7 @@ export const MainLayout: React.FC = () => {
 
           {/* Right controls */}
           <div className="flex items-center gap-2">
-            {/* SIH Tag */}
+            {/* Portal Version Tag */}
             <div
               className="hidden sm:flex items-center gap-1"
               style={{
@@ -617,7 +617,7 @@ export const MainLayout: React.FC = () => {
                 letterSpacing: '0.04em',
               }}
             >
-              SIH·2026
+              AICTE·v2.4
             </div>
 
             {/* Help */}
@@ -715,7 +715,7 @@ export const MainLayout: React.FC = () => {
           }}
         >
           <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-            AICTE Approval &amp; Compliance Platform &nbsp;·&nbsp; Smart India Hackathon 2026 &nbsp;·&nbsp; SIH26262 &nbsp;·&nbsp; Ministry of Education, Government of India
+            AICTE Regulatory Operations &amp; Compliance Monitoring Portal &nbsp;·&nbsp; All India Council for Technical Education &nbsp;·&nbsp; Ministry of Education, Government of India
           </p>
         </footer>
       </div>

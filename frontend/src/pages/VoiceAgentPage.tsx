@@ -138,7 +138,7 @@ export const VoiceAgentPage: React.FC = () => {
               letterSpacing: '0.06em', textTransform: 'uppercase',
               display: 'flex', alignItems: 'center', gap: 5,
             }}>
-              <Sparkles size={10} /> SIH26262 Innovation
+              <Sparkles size={10} /> AI Regulatory Innovation
             </span>
             <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>Mode: SIMULATED AGENT</span>
           </div>
@@ -334,7 +334,7 @@ export const VoiceAgentPage: React.FC = () => {
                 <Mic className="w-4 h-4 text-rose-600" /> Interactive Voice Call Simulation Console
               </h2>
               <p className="text-xs text-slate-500">
-                Transparent test sandbox for Smart India Hackathon jury demonstration.
+                Interactive voice call testing console and intent recognition verification.
               </p>
             </div>
             <button
