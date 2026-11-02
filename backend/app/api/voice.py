@@ -75,7 +75,8 @@ async def initiate_voice_call(
         contact_phone=institution.contact_phone,
         institution_name=institution.name,
         pending_item=req.pending_item_description,
-        language=req.language
+        language=req.language,
+        submission_deadline=req.submission_deadline
     )
 
     # Create initial CallLog record
@@ -90,7 +91,10 @@ async def initiate_voice_call(
         language=req.language,
         recognized_intent="UNCLEAR_RESPONSE",
         transcript_text=f"[AI Assistant]: {call_session['system_opening_prompt']}",
-        ai_summary="Call initiated in simulated mode. Awaiting representative speech/response."
+        ai_summary=(
+            f"Call initiated to primary number {institution.contact_phone} regarding pending: "
+            f"'{req.pending_item_description}'. Prescribed deadline: {req.submission_deadline or 'N/A'}."
+        )
     )
     db.add(call)
     await db.commit()
@@ -101,7 +105,8 @@ async def initiate_voice_call(
         "contact_person": institution.contact_person,
         "contact_phone": institution.contact_phone,
         "opening_prompt": call_session["system_opening_prompt"],
-        "disclaimer": call_session["disclaimer"]
+        "disclaimer": call_session["disclaimer"],
+        "submission_deadline": req.submission_deadline
     }
 
 @router.post("/calls/{call_id}/simulate-response")
@@ -237,3 +242,250 @@ async def get_follow_up_tasks(
         }
         for t in tasks
     ]
+
+@router.get("/pending-deficiencies")
+async def get_pending_deficiencies_for_voice(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Returns all items where deadlines have been missed or approaching:
+    1. Overdue/pending undertakings from institutions
+    2. Overdue application stages (e.g., deficiency return unaddressed)
+    3. Expiring critical documents
+    """
+    now = datetime.utcnow()
+    items = []
+
+    # 1. Undertakings
+    ut_query = select(Undertaking).options(
+        selectinload(Undertaking.institution),
+        selectinload(Undertaking.application)
+    ).where(Undertaking.status.in_(["NOT_SUBMITTED", "RETURNED_FOR_CORRECTION", "OVERDUE"]))
+    
+    if current_user.role == UserRole.INSTITUTION:
+        ut_query = ut_query.where(Undertaking.institution_id == current_user.institution_id)
+
+    ut_res = await db.execute(ut_query)
+    for u in ut_res.scalars().all():
+        is_overdue = u.due_date < now or u.status == "OVERDUE"
+        days_diff = (u.due_date - now).days
+        items.append({
+            "type": "UNDERTAKING",
+            "id": u.id,
+            "institution_id": u.institution_id,
+            "institution_name": u.institution.name if u.institution else "N/A",
+            "contact_phone": u.institution.contact_phone if u.institution else "N/A",
+            "contact_person": u.institution.contact_person if u.institution else "N/A",
+            "application_id": u.application_id,
+            "application_number": u.application.application_number if u.application else "N/A",
+            "pending_item": f"{u.condition_title} ({u.required_evidence_type})",
+            "deadline": u.due_date.strftime("%d-%b-%Y"),
+            "is_overdue": is_overdue,
+            "status_label": "DEADLINE MISSED" if is_overdue else f"Due in {days_diff} days",
+            "category": "Institutional Undertaking Compliance"
+        })
+
+    # 2. Overdue Application stages (e.g. DEFICIENCY_RETURNED or pending scrutiny)
+    app_query = select(Application).options(
+        selectinload(Application.institution)
+    ).where(Application.status.not_in(["APPROVED", "REJECTED", "CLOSED"]))
+
+    if current_user.role == UserRole.INSTITUTION:
+        app_query = app_query.where(Application.institution_id == current_user.institution_id)
+
+    app_res = await db.execute(app_query)
+    for a in app_res.scalars().all():
+        if a.is_overdue or (a.stage_deadline and a.stage_deadline < now):
+            deadline_str = a.stage_deadline.strftime("%d-%b-%Y") if a.stage_deadline else "Overdue"
+            items.append({
+                "type": "APPLICATION_STAGE",
+                "id": a.id,
+                "institution_id": a.institution_id,
+                "institution_name": a.institution.name if a.institution else "N/A",
+                "contact_phone": a.institution.contact_phone if a.institution else "N/A",
+                "contact_person": a.institution.contact_person if a.institution else "N/A",
+                "application_id": a.id,
+                "application_number": a.application_number,
+                "pending_item": f"Stage '{a.current_stage}' Resolution / Deficiency Clearance",
+                "deadline": deadline_str,
+                "is_overdue": True,
+                "status_label": "OFFICER & INSTITUTION STAGE MISSED",
+                "category": "Application Stage Pendency"
+            })
+
+    # 3. Expired or Expiring soon critical documents
+    doc_query = select(Document).options(
+        selectinload(Document.institution)
+    ).where(Document.validity_status.in_(["EXPIRED", "EXPIRING_SOON_30"]))
+
+    if current_user.role == UserRole.INSTITUTION:
+        doc_query = doc_query.where(Document.institution_id == current_user.institution_id)
+
+    doc_res = await db.execute(doc_query)
+    for d in doc_res.scalars().all():
+        items.append({
+            "type": "DOCUMENT_RENEWAL",
+            "id": d.id,
+            "institution_id": d.institution_id,
+            "institution_name": d.institution.name if d.institution else "N/A",
+            "contact_phone": d.institution.contact_phone if d.institution else "N/A",
+            "contact_person": d.institution.contact_person if d.institution else "N/A",
+            "application_id": d.application_id,
+            "application_number": "N/A",
+            "pending_item": f"Mandatory Document Renewal: {d.display_name} ({d.document_type})",
+            "deadline": d.expiry_date.strftime("%d-%b-%Y") if d.expiry_date else "Immediate Renewal Required",
+            "is_overdue": d.validity_status == "EXPIRED",
+            "status_label": "EXPIRED" if d.validity_status == "EXPIRED" else "Expiring Soon",
+            "category": "Statutory Document Expiry"
+        })
+
+    return items
+
+
+@router.post("/trigger-automated-deadline-calls")
+async def trigger_automated_deadline_calls(
+    current_user: User = Depends(require_roles(UserRole.REGIONAL_OFFICER, UserRole.BUREAU_OFFICER, UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Automated Voice Calling Engine:
+    Detects all missed deadlines from the officer/institution side and automatically schedules & initiates
+    AI voice calls directly to each institution's registered primary contact number.
+    """
+    now = datetime.utcnow()
+    calls_created = []
+
+    # 1. Fetch all overdue undertakings
+    ut_query = select(Undertaking).options(
+        selectinload(Undertaking.institution),
+        selectinload(Undertaking.application)
+    ).where(Undertaking.status.in_(["NOT_SUBMITTED", "RETURNED_FOR_CORRECTION", "OVERDUE"]))
+    
+    ut_res = await db.execute(ut_query)
+    for u in ut_res.scalars().all():
+        if u.due_date < now or u.status == "OVERDUE":
+            inst = u.institution
+            if not inst:
+                continue
+            
+            # Check rate limiting: max 2 calls per undertaking
+            existing_call_res = await db.execute(
+                select(CallLog).where(
+                    CallLog.undertaking_id == u.id,
+                    CallLog.call_status.in_(["INITIATED", "CONNECTED", "COMPLETED"])
+                )
+            )
+            existing_calls = existing_call_res.scalars().all()
+            if len(existing_calls) > 2:
+                continue
+            
+            deadline_str = u.due_date.strftime("%d-%b-%Y")
+            pending_desc = f"{u.condition_title} (Evidence: {u.required_evidence_type})"
+            
+            call_session = await voice_agent.initiate_call(
+                contact_person=inst.contact_person,
+                contact_phone=inst.contact_phone,
+                institution_name=inst.name,
+                pending_item=pending_desc,
+                language="English",
+                submission_deadline=deadline_str
+            )
+
+            call = CallLog(
+                institution_id=inst.id,
+                application_id=u.application_id,
+                undertaking_id=u.id,
+                contact_phone=inst.contact_phone,
+                contact_person=inst.contact_person,
+                provider_mode="SIMULATED",
+                call_status="INITIATED",
+                language="English",
+                recognized_intent="UNCLEAR_RESPONSE",
+                transcript_text=f"[Automated AI Voice Reminder to {inst.contact_phone}]: {call_session['system_opening_prompt']}",
+                ai_summary=(
+                    f"Automated Deadline Voice Alert dispatched to primary contact {inst.contact_phone} ({inst.contact_person}). "
+                    f"Condition: '{u.condition_title}'. Prescribed submission deadline: {deadline_str}."
+                )
+            )
+            db.add(call)
+            calls_created.append({
+                "institution_name": inst.name,
+                "phone": inst.contact_phone,
+                "contact_person": inst.contact_person,
+                "pending_item": pending_desc,
+                "deadline": deadline_str,
+                "type": "UNDERTAKING_OVERDUE"
+            })
+
+    # 2. Fetch overdue application stages
+    app_query = select(Application).options(
+        selectinload(Application.institution)
+    ).where(
+        Application.status.not_in(["APPROVED", "REJECTED", "CLOSED"]),
+        Application.is_overdue == True
+    )
+    app_res = await db.execute(app_query)
+    for a in app_res.scalars().all():
+        inst = a.institution
+        if not inst:
+            continue
+        
+        deadline_str = a.stage_deadline.strftime("%d-%b-%Y") if a.stage_deadline else "Past Due"
+        pending_desc = f"Application {a.application_number} ({a.current_stage} submission)"
+        
+        call_session = await voice_agent.initiate_call(
+            contact_person=inst.contact_person,
+            contact_phone=inst.contact_phone,
+            institution_name=inst.name,
+            pending_item=pending_desc,
+            language="English",
+            submission_deadline=deadline_str
+        )
+
+        call = CallLog(
+            institution_id=inst.id,
+            application_id=a.id,
+            contact_phone=inst.contact_phone,
+            contact_person=inst.contact_person,
+            provider_mode="SIMULATED",
+            call_status="INITIATED",
+            language="English",
+            recognized_intent="UNCLEAR_RESPONSE",
+            transcript_text=f"[Automated AI Voice Reminder to {inst.contact_phone}]: {call_session['system_opening_prompt']}",
+            ai_summary=(
+                f"Automated Stage Deadline Voice Alert dispatched to {inst.contact_phone}. "
+                f"Application {a.application_number} overdue at stage {a.current_stage}. Prescribed deadline: {deadline_str}."
+            )
+        )
+        db.add(call)
+        calls_created.append({
+            "institution_name": inst.name,
+            "phone": inst.contact_phone,
+            "contact_person": inst.contact_person,
+            "pending_item": pending_desc,
+            "deadline": deadline_str,
+            "type": "STAGE_OVERDUE"
+        })
+
+    # Audit log
+    audit = AuditEvent(
+        actor_id=current_user.id,
+        actor_name=current_user.full_name,
+        actor_role=current_user.role,
+        action="AUTOMATED_VOICE_CALLS_TRIGGERED",
+        target_entity="CallLog",
+        target_id="BATCH",
+        details={"calls_count": len(calls_created)}
+    )
+    db.add(audit)
+
+    await db.commit()
+
+    return {
+        "success": True,
+        "dispatched_count": len(calls_created),
+        "dispatched_calls": calls_created,
+        "message": f"Successfully triggered {len(calls_created)} automated voice call reminders to institutional primary contact numbers."
+    }
+

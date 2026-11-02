@@ -35,13 +35,39 @@ class SimulatedVoiceAgent(VoiceAgentProvider):
         "NO_ANSWER": ["ringing", "no answer", "voicemail"]
     }
 
-    async def initiate_call(self, contact_person: str, contact_phone: str, institution_name: str, pending_item: str, language: str = "English") -> Dict[str, Any]:
-        script = (
-            f"Namaskar. This is the automated AI compliance reminder assistant from AICTE. "
-            f"Am I speaking with {contact_person} from {institution_name}? "
-            f"We are calling regarding your pending regulatory requirement: '{pending_item}'. "
-            f"Could you please share your submission status?"
-        )
+    async def initiate_call(
+        self,
+        contact_person: str,
+        contact_phone: str,
+        institution_name: str,
+        pending_item: str,
+        language: str = "English",
+        submission_deadline: Optional[str] = None
+    ) -> Dict[str, Any]:
+        deadline_phrase = f" which had a prescribed submission deadline of {submission_deadline}" if submission_deadline else ""
+        
+        if language == "Hindi":
+            script = (
+                f"नमस्ते। यह अखिल भारतीय तकनीकी शिक्षा परिषद (AICTE) का स्वचालित अनुपालन सहायक है। "
+                f"क्या मैं {institution_name} से {contact_person} जी से बात कर रहा हूँ? "
+                f"हम आपकी लंबित विनियामक आवश्यकता: '{pending_item}'{f', जिसकी अंतिम तिथि {submission_deadline} थी,' if submission_deadline else ''} के संबंध में संपर्क कर रहे हैं। "
+                f"कृपया अपनी वर्तमान सबमिशन स्थिति और अपेक्षित जमा करने की तारीख साझा करें।"
+            )
+        elif language == "Marathi":
+            script = (
+                f"नमस्कार. हे अखिल भारतीय तंत्रशिक्षण परिषदेचे (AICTE) स्वयंचलित नियमन स्मरण सहाय्यक आहे. "
+                f"मी {institution_name} मधील {contact_person} यांच्याशी बोलत आहे का? "
+                f"आम्ही आपल्या प्रलंबित आवश्यक कागदपत्र: '{pending_item}'{f', ज्याची अंतिम मुदत {submission_deadline} होती,' if submission_deadline else ''} संदर्भात संपर्क करत आहोत. "
+                f"कृपया आपली सद्यस्थिती सांगा."
+            )
+        else:
+            script = (
+                f"Namaskar. This is the automated AI compliance reminder assistant from AICTE. "
+                f"Am I speaking with {contact_person} from {institution_name}? "
+                f"We are calling regarding your pending regulatory requirement: '{pending_item}'{deadline_phrase}. "
+                f"Officer reminders have been issued, but mandatory submission remains pending on the AICTE portal. "
+                f"Could you please state what is pending from your side and the expected date of submission?"
+            )
         return {
             "status": "CONNECTED",
             "provider_mode": "SIMULATED",

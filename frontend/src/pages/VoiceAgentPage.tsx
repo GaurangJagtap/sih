@@ -13,10 +13,16 @@ export const VoiceAgentPage: React.FC = () => {
   const [followUpTasks, setFollowUpTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Missed Deadlines / Pending items state
+  const [pendingDeficiencies, setPendingDeficiencies] = useState<any[]>([]);
+  const [triggeringBatch, setTriggeringBatch] = useState(false);
+  const [batchResult, setBatchResult] = useState<any | null>(null);
+
   // Trigger call modal state
   const [showInitiateModal, setShowInitiateModal] = useState(false);
   const [selectedInstId, setSelectedInstId] = useState('');
   const [pendingRequirement, setPendingRequirement] = useState('Certified Fire Safety NOC Renewal');
+  const [submissionDeadline, setSubmissionDeadline] = useState('31-Oct-2026');
   const [selectedLang, setSelectedLang] = useState('English');
   const [activeCallSession, setActiveCallSession] = useState<any | null>(null);
 
@@ -28,12 +34,14 @@ export const VoiceAgentPage: React.FC = () => {
   const fetchVoiceData = async () => {
     try {
       setLoading(true);
-      const [callsRes, tasksRes] = await Promise.all([
+      const [callsRes, tasksRes, defRes] = await Promise.all([
         api.get('/voice/calls'),
         api.get('/voice/follow-up-tasks'),
+        api.get('/voice/pending-deficiencies').catch(() => ({ data: [] })),
       ]);
       setCallLogs(callsRes.data);
       setFollowUpTasks(tasksRes.data);
+      setPendingDeficiencies(defRes.data || []);
       if (callsRes.data.length > 0 && !selectedInstId) {
         setSelectedInstId(callsRes.data[0].institution_id);
       }
@@ -48,6 +56,19 @@ export const VoiceAgentPage: React.FC = () => {
     fetchVoiceData();
   }, []);
 
+  const handleTriggerAutomatedCalls = async () => {
+    try {
+      setTriggeringBatch(true);
+      const res = await api.post('/voice/trigger-automated-deadline-calls');
+      setBatchResult(res.data);
+      await fetchVoiceData();
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'Failed to trigger automated deadline calls');
+    } finally {
+      setTriggeringBatch(false);
+    }
+  };
+
   const handleInitiateCall = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -55,12 +76,22 @@ export const VoiceAgentPage: React.FC = () => {
         institution_id: selectedInstId,
         pending_item_description: pendingRequirement,
         language: selectedLang,
+        submission_deadline: submissionDeadline,
       });
       setActiveCallSession(res.data);
       setCallResult(null);
     } catch (err: any) {
       alert(err.response?.data?.detail || 'Failed to initiate simulated voice call');
     }
+  };
+
+  const handleDirectCallItem = (item: any) => {
+    setSelectedInstId(item.institution_id);
+    setPendingRequirement(item.pending_item);
+    setSubmissionDeadline(item.deadline);
+    setShowInitiateModal(true);
+    setActiveCallSession(null);
+    setCallResult(null);
   };
 
   const handleSimulateResponse = async (spokenText: string) => {
@@ -120,21 +151,178 @@ export const VoiceAgentPage: React.FC = () => {
             and schedules follow-up tasks without bypassing statutory officer verification.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => { setShowInitiateModal(true); setActiveCallSession(null); setCallResult(null); }}
-          style={{
-            background: 'var(--red)', color: '#fff',
-            border: 'none', borderRadius: 10,
-            padding: '9px 18px', fontSize: 12.5, fontWeight: 700,
-            cursor: 'pointer', flexShrink: 0,
-            display: 'flex', alignItems: 'center', gap: 7,
-            boxShadow: '0 4px 12px rgba(198,76,76,0.35)',
-            transition: 'all 150ms',
-          }}
-        >
-          <PhoneCall size={15} /> Trigger Automated Call
-        </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end', flexShrink: 0 }}>
+          <button
+            type="button"
+            onClick={handleTriggerAutomatedCalls}
+            disabled={triggeringBatch}
+            style={{
+              background: '#268568', color: '#fff',
+              border: 'none', borderRadius: 10,
+              padding: '9px 16px', fontSize: 12, fontWeight: 700,
+              cursor: triggeringBatch ? 'wait' : 'pointer',
+              display: 'flex', alignItems: 'center', gap: 7,
+              boxShadow: '0 4px 12px rgba(38,133,104,0.35)',
+              transition: 'all 150ms',
+            }}
+          >
+            <Sparkles size={14} /> {triggeringBatch ? 'Scanning & Calling...' : 'Auto-Call Overdue Deadlines'}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setShowInitiateModal(true); setActiveCallSession(null); setCallResult(null); }}
+            style={{
+              background: 'rgba(255,255,255,0.15)', color: '#fff',
+              border: '1px solid rgba(255,255,255,0.25)', borderRadius: 10,
+              padding: '8px 15px', fontSize: 11.5, fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 6,
+              transition: 'all 150ms',
+            }}
+          >
+            <PhoneCall size={13} /> Custom Manual Call
+          </button>
+        </div>
+      </div>
+
+      {/* Batch Dispatch Result Alert */}
+      {batchResult && (
+        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start justify-between gap-3 text-xs animate-in">
+          <div className="flex items-start gap-2.5">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <div className="font-bold text-emerald-900 text-sm">{batchResult.message}</div>
+              <p className="text-emerald-700 mt-1">
+                AI Voice agent evaluated missed deadlines across both officer reminders and institutional obligations. 
+                Calls were dispatched with exact pending details and deadline dates to each registered primary contact number.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setBatchResult(null)}
+            className="text-emerald-600 hover:text-emerald-900 font-bold px-2 py-1 text-xs"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          NEW SECTION: MISSED DEADLINE & OVERDUE CALL QUEUE
+          ═══════════════════════════════════════════════════════════════════ */}
+      <div className="surface-card animate-in" style={{ padding: '20px 22px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14, gap: 12 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <AlertTriangle size={17} color="#D99A32" />
+              <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--navy-text)', margin: 0 }}>
+                Missed Deadlines &amp; Automated Voice Dispatch Queue
+              </h2>
+              <span style={{
+                fontSize: 10, fontWeight: 700,
+                padding: '2px 8px', borderRadius: 99,
+                background: 'rgba(217,154,50,0.15)',
+                color: '#D99A32',
+                border: '1px solid rgba(217,154,50,0.30)',
+              }}>
+                {pendingDeficiencies.length} Deficiencies Detected
+              </span>
+            </div>
+            <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.5 }}>
+              When compliance deadlines are missed by an institution or officer stage reminders go unaddressed, 
+              this system identifies the exact pending items and dispatches an automated voice call to the institution's primary contact number.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleTriggerAutomatedCalls}
+            disabled={triggeringBatch}
+            className="btn btn-primary btn-sm flex items-center gap-1.5"
+            style={{ flexShrink: 0 }}
+          >
+            <PhoneCall size={13} />
+            {triggeringBatch ? 'Calling Registered Numbers...' : 'Dispatch All Missed Deadline Calls'}
+          </button>
+        </div>
+
+        {pendingDeficiencies.length === 0 ? (
+          <div className="empty-state" style={{ padding: '24px 0' }}>
+            <CheckCircle2 size={32} color="var(--green)" />
+            <div className="empty-title" style={{ marginTop: 8 }}>No Missed Deadlines</div>
+            <div className="empty-desc">All regulatory submissions and stage timelines are currently within compliance limits.</div>
+          </div>
+        ) : (
+          <div className="data-table-wrapper" style={{ overflowX: 'auto' }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Target Institution &amp; Primary Phone</th>
+                  <th>Category</th>
+                  <th>Pending Requirement to Submit</th>
+                  <th>Prescribed Deadline</th>
+                  <th>Status</th>
+                  <th style={{ textAlign: 'right' }}>Voice Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingDeficiencies.map((item, idx) => (
+                  <tr key={`${item.type}-${item.id}-${idx}`}>
+                    <td>
+                      <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 12 }}>
+                        {item.institution_name}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--blue-primary)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                        <PhoneCall size={11} />
+                        <span style={{ fontWeight: 600 }}>{item.contact_phone}</span>
+                        <span style={{ color: 'var(--text-muted)' }}>({item.contact_person})</span>
+                      </div>
+                    </td>
+                    <td>
+                      <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                        {item.category}
+                      </span>
+                    </td>
+                    <td style={{ maxWidth: 300 }}>
+                      <div style={{ fontWeight: 600, fontSize: 11.5, color: 'var(--text-primary)' }}>
+                        {item.pending_item}
+                      </div>
+                      {item.application_number && item.application_number !== 'N/A' && (
+                        <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 2 }}>
+                          App: {item.application_number}
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 600 }}>
+                        <Calendar size={12} color={item.is_overdue ? 'var(--red)' : 'var(--text-muted)'} />
+                        <span style={{ color: item.is_overdue ? 'var(--red)' : 'var(--text-primary)' }}>
+                          {item.deadline}
+                        </span>
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`badge ${item.is_overdue ? 'badge-red' : 'badge-amber'}`} style={{ fontSize: 10 }}>
+                        {item.status_label}
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleDirectCallItem(item)}
+                        className="btn btn-secondary btn-sm flex items-center gap-1.5"
+                        style={{ display: 'inline-flex' }}
+                      >
+                        <PhoneCall size={12} /> Call Primary No.
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Interactive Simulation Sandbox */}
@@ -182,8 +370,23 @@ export const VoiceAgentPage: React.FC = () => {
                   required
                   value={pendingRequirement}
                   onChange={(e) => setPendingRequirement(e.target.value)}
+                  placeholder="e.g. Fire Safety NOC Renewal"
                   className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
                 />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Prescribed Submission Deadline</label>
+                <input
+                  type="text"
+                  value={submissionDeadline}
+                  onChange={(e) => setSubmissionDeadline(e.target.value)}
+                  placeholder="e.g. 31-Oct-2026 or 05-Nov-2026"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium"
+                />
+                <span className="text-[10px] text-slate-500 mt-1 block">
+                  The AI voice agent will explicitly state this missed/approaching deadline and ask for the expected submission date.
+                </span>
               </div>
 
               <div>
@@ -225,9 +428,30 @@ export const VoiceAgentPage: React.FC = () => {
                 </div>
 
                 <div className="bg-slate-800 p-3 rounded-lg border border-slate-700 text-xs">
-                  <span className="text-[10px] text-blue-400 font-bold block mb-1">
-                    AI AUTOMATED ASSISTANT (TTS PROMPT):
-                  </span>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] text-blue-400 font-bold">
+                      AI AUTOMATED ASSISTANT (TTS PROMPT):
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if ('speechSynthesis' in window) {
+                          window.speechSynthesis.cancel();
+                          const utterance = new SpeechSynthesisUtterance(activeCallSession.opening_prompt);
+                          utterance.rate = 0.95;
+                          if (selectedLang === 'Hindi') utterance.lang = 'hi-IN';
+                          else if (selectedLang === 'Marathi') utterance.lang = 'mr-IN';
+                          else utterance.lang = 'en-IN';
+                          window.speechSynthesis.speak(utterance);
+                        } else {
+                          alert('Speech synthesis is not supported in this browser.');
+                        }
+                      }}
+                      className="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded text-[10px] font-bold flex items-center gap-1.5"
+                    >
+                      <Play className="w-3 h-3" /> Play Audio Voice
+                    </button>
+                  </div>
                   <p className="text-slate-200 italic leading-relaxed">
                     "{activeCallSession.opening_prompt}"
                   </p>

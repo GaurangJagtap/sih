@@ -120,6 +120,7 @@ class VoiceCallInitiateRequest(BaseModel):
     undertaking_id: Optional[str] = None
     pending_item_description: str
     language: str = "English"
+    submission_deadline: Optional[str] = None
 
 class VoiceCallSimulateResponseRequest(BaseModel):
     user_spoken_response: str
